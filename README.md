@@ -16,6 +16,7 @@ A beautiful, modern fake payment processing application for prototyping and demo
 - 💳 Realistic payment form with card input formatting
 - ✅ Form validation and error handling
 - 🔄 Loading states and animations
+- 📅 Schedule payments for a future date/time
 - ✨ Success confirmation with transaction details
 - 🧪 Test card numbers for easy testing
 - 📱 Fully responsive design
@@ -93,9 +94,15 @@ Process a fake payment
   "expiryDate": "12/25",
   "cvv": "123",
   "amount": 99.99,
-  "currency": "USD"
+  "currency": "USD",
+  "scheduleFor": "2026-11-30T16:00:00"
 }
 ```
+
+**Validation notes:**
+- Payload must be valid JSON
+- `amount` must be a numeric value greater than `0`
+- If provided, `scheduleFor` must be a valid future ISO datetime
 
 **Success Response:**
 ```json
@@ -104,7 +111,9 @@ Process a fake payment
   "transaction_id": "A1B2C3D4E5F6",
   "amount": 99.99,
   "currency": "USD",
-  "timestamp": "2025-11-14T10:30:00.000000"
+  "timestamp": "2025-11-14T10:30:00.000000",
+  "status": "completed",
+  "scheduled_for": null
 }
 ```
 

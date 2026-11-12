@@ -80,18 +80,13 @@ function resetForm() {
     document.getElementById('paymentForm').style.display = 'block';
     document.getElementById('successMessage').style.display = 'none';
     document.getElementById('errorBanner').style.display = 'none';
+    document.querySelector('#successMessage h2').textContent = 'Payment Successful!';
+    document.querySelector('#successMessage .success-message').textContent = 'Your transaction has been processed successfully';
+    document.getElementById('transactionTimeLabel').textContent = 'Date & Time';
 }
 
-// Handle form submission
-document.getElementById('payment-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const submitBtn = document.getElementById('submitBtn');
-    const btnText = submitBtn.querySelector('.btn-text');
-    const btnLoader = submitBtn.querySelector('.btn-loader');
-    
-    // Get form data
-    const formData = {
+function getFormData() {
+    return {
         cardNumber: document.getElementById('cardNumber').value.replace(/\s/g, ''),
         cardName: document.getElementById('cardName').value,
         expiryDate: document.getElementById('expiryDate').value,
@@ -99,35 +94,52 @@ document.getElementById('payment-form').addEventListener('submit', async functio
         amount: parseFloat(document.getElementById('amount').value),
         currency: 'USD'
     };
+}
 
+function validateFormData(formData) {
     if (!Number.isFinite(formData.amount) || formData.amount <= 0) {
         showError('Please enter a valid amount greater than zero');
-        return;
+        return false;
     }
     
     if (formData.cardNumber.length < 13) {
         showError('Please enter a valid card number');
-        return;
+        return false;
     }
     
     if (!formData.expiryDate.match(/^\d{2}\/\d{2}$/)) {
         showError('Please enter a valid expiry date (MM/YY)');
-        return;
+        return false;
     }
     
     if (formData.cvv.length < 3) {
         showError('Please enter a valid CVV');
-        return;
+        return false;
     }
+
+    return true;
+}
+
+async function submitPayment(formData, isScheduled = false) {
+    const submitBtn = document.getElementById('submitBtn');
+    const scheduleBtn = document.getElementById('scheduleBtn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoader = submitBtn.querySelector('.btn-loader');
+    const originalScheduleText = scheduleBtn.textContent;
     
     // Show loading
     submitBtn.disabled = true;
-    btnText.style.display = 'none';
-    btnLoader.style.display = 'flex';
+    scheduleBtn.disabled = true;
+    if (isScheduled) {
+        scheduleBtn.textContent = 'Scheduling...';
+    } else {
+        btnText.style.display = 'none';
+        btnLoader.style.display = 'flex';
+    }
     
     try {
         // Send payment request
-        const response = await fetch('http://localhost:5000/api/payment', {
+        const response = await fetch('/api/payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -138,10 +150,25 @@ document.getElementById('payment-form').addEventListener('submit', async functio
         const data = await response.json();
         
         if (data.success) {
+            const successTitle = document.querySelector('#successMessage h2');
+            const successMessage = document.querySelector('#successMessage .success-message');
+            const timeLabel = document.getElementById('transactionTimeLabel');
+            const displayTime = data.status === 'scheduled' ? data.scheduled_for : data.timestamp;
+
+            if (data.status === 'scheduled') {
+                successTitle.textContent = 'Payment Scheduled!';
+                successMessage.textContent = 'Your payment has been scheduled successfully';
+                timeLabel.textContent = 'Scheduled For';
+            } else {
+                successTitle.textContent = 'Payment Successful!';
+                successMessage.textContent = 'Your transaction has been processed successfully';
+                timeLabel.textContent = 'Date & Time';
+            }
+
             // Show success message
             document.getElementById('transactionId').textContent = data.transaction_id;
             document.getElementById('transactionAmount').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
-            document.getElementById('transactionTime').textContent = new Date(data.timestamp).toLocaleString();
+            document.getElementById('transactionTime').textContent = displayTime ? new Date(displayTime).toLocaleString() : '-';
             
             document.getElementById('paymentForm').style.display = 'none';
             document.getElementById('successMessage').style.display = 'block';
@@ -154,9 +181,46 @@ document.getElementById('payment-form').addEventListener('submit', async functio
     } finally {
         // Reset button
         submitBtn.disabled = false;
-        btnText.style.display = 'inline';
-        btnLoader.style.display = 'none';
+        scheduleBtn.disabled = false;
+        scheduleBtn.textContent = originalScheduleText;
+        if (!isScheduled) {
+            btnText.style.display = 'inline';
+            btnLoader.style.display = 'none';
+        }
     }
+}
+
+// Handle immediate payment form submission
+document.getElementById('payment-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = getFormData();
+    if (!validateFormData(formData)) {
+        return;
+    }
+    await submitPayment(formData, false);
+});
+
+// Handle scheduled payments
+document.getElementById('scheduleBtn').addEventListener('click', async function() {
+    const formData = getFormData();
+    if (!validateFormData(formData)) {
+        return;
+    }
+
+    const scheduleDateTime = document.getElementById('scheduleDateTime').value;
+    if (!scheduleDateTime) {
+        showError('Please choose a date and time to schedule this payment');
+        return;
+    }
+
+    const scheduledAt = new Date(scheduleDateTime);
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+        showError('Please choose a future date and time for scheduling');
+        return;
+    }
+
+    formData.scheduleFor = scheduledAt.toISOString();
+    await submitPayment(formData, true);
 });
 
 // Add some visual feedback on input focus

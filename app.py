@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import json
+from werkzeug.exceptions import NotFound
 import os
 from datetime import datetime
 import random
 import string
-import math
+import time
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -32,55 +32,70 @@ def serve_static(filename):
     """Serve static files"""
     try:
         return send_from_directory('static', filename)
-    except:
+    except NotFound:
         return '', 404
 
 @app.route('/api/payment', methods=['POST'])
 def process_payment():
     """Process a fake payment"""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Invalid JSON payload.'}), 400
+    
+    # Validate required fields
+    required_fields = ['cardNumber', 'cardName', 'expiryDate', 'cvv', 'amount']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
+    
     try:
-        data = request.json
-        
-        # Validate required fields
-        required_fields = ['cardNumber', 'cardName', 'expiryDate', 'cvv', 'amount']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
-        
-        # Bug: Change False to True to fix the negative payment bug
-        validate_positive = False
-        
         amount = float(data['amount'])
-        if validate_positive and amount <= 0:
-            return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
-        
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Amount must be a valid number.'}), 400
+
+    if amount <= 0:
+        return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
+
+    schedule_for_raw = data.get('scheduleFor')
+    schedule_for = None
+    status = 'completed'
+    if schedule_for_raw:
+        try:
+            schedule_for = datetime.fromisoformat(str(schedule_for_raw))
+        except ValueError:
+            return jsonify({'success': False, 'error': 'scheduleFor must be a valid ISO datetime.'}), 400
+
+        now = datetime.now(schedule_for.tzinfo) if schedule_for.tzinfo else datetime.now()
+        if schedule_for <= now:
+            return jsonify({'success': False, 'error': 'scheduleFor must be in the future.'}), 400
+        status = 'scheduled'
+    else:
         # Simulate payment processing delay
-        import time
         time.sleep(1)
-        
-        # Create payment record
-        payment = {
-            'transaction_id': generate_transaction_id(),
-            'amount': amount,
-            'currency': data.get('currency', 'USD'),
-            'card_last_four': data['cardNumber'][-4:],
-            'card_name': data['cardName'],
-            'timestamp': datetime.now().isoformat(),
-            'status': 'completed'
-        }
-        
-        payments.append(payment)
-        
-        return jsonify({
-            'success': True,
-            'transaction_id': payment['transaction_id'],
-            'amount': payment['amount'],
-            'currency': payment['currency'],
-            'timestamp': payment['timestamp']
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # Create payment record
+    payment = {
+        'transaction_id': generate_transaction_id(),
+        'amount': amount,
+        'currency': data.get('currency', 'USD'),
+        'card_last_four': data['cardNumber'][-4:],
+        'card_name': data['cardName'],
+        'timestamp': datetime.now().isoformat(),
+        'status': status,
+        'scheduled_for': schedule_for.isoformat() if schedule_for else None
+    }
+    
+    payments.append(payment)
+    
+    return jsonify({
+        'success': True,
+        'transaction_id': payment['transaction_id'],
+        'amount': payment['amount'],
+        'currency': payment['currency'],
+        'timestamp': payment['timestamp'],
+        'status': payment['status'],
+        'scheduled_for': payment['scheduled_for']
+    })
 
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():

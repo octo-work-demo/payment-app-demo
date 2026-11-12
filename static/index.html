@@ -104,6 +104,14 @@
                             Processing...
                         </span>
                     </button>
+
+                    <div class="schedule-payment">
+                        <label for="scheduleDateTime">Or schedule this payment for later</label>
+                        <input type="datetime-local" id="scheduleDateTime" name="scheduleDateTime">
+                        <button type="button" class="secondary-btn schedule-btn" id="scheduleBtn">
+                            Schedule for Later
+                        </button>
+                    </div>
                 </form>
 
                 <!-- Security Info -->
@@ -137,7 +145,7 @@
                         <strong id="transactionAmount">-</strong>
                     </div>
                     <div class="detail-row">
-                        <span>Date & Time</span>
+                        <span id="transactionTimeLabel">Date & Time</span>
                         <strong id="transactionTime">-</strong>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 import pytest
 import json
+from datetime import datetime, timedelta
 from app import app, payments, generate_transaction_id
 
 
@@ -79,6 +80,57 @@ class TestPaymentAPI:
         # Check that error message mentions amount validation
         error_msg = data['error'].lower()
         assert 'amount' in error_msg or 'negative' in error_msg or 'invalid' in error_msg or 'greater' in error_msg
+
+    def test_scheduled_payment_success(self, client):
+        """Test scheduling a payment for a future time"""
+        schedule_for = (datetime.now() + timedelta(hours=2)).isoformat()
+        payment_data = {
+            'cardNumber': '4532148803436467',
+            'cardName': 'TEST USER',
+            'expiryDate': '12/25',
+            'cvv': '123',
+            'amount': 60.00,
+            'currency': 'USD',
+            'scheduleFor': schedule_for
+        }
+
+        response = client.post(
+            '/api/payment',
+            data=json.dumps(payment_data),
+            content_type='application/json'
+        )
+        data = json.loads(response.data)
+
+        assert response.status_code == 200
+        assert data['success'] is True
+        assert data['status'] == 'scheduled'
+        assert data['scheduled_for'] is not None
+        assert len(payments) == 1
+        assert payments[0]['status'] == 'scheduled'
+
+    def test_scheduled_payment_in_past_rejected(self, client):
+        """Test scheduling a payment in the past is rejected"""
+        schedule_for = (datetime.now() - timedelta(minutes=10)).isoformat()
+        payment_data = {
+            'cardNumber': '4532148803436467',
+            'cardName': 'TEST USER',
+            'expiryDate': '12/25',
+            'cvv': '123',
+            'amount': 60.00,
+            'currency': 'USD',
+            'scheduleFor': schedule_for
+        }
+
+        response = client.post(
+            '/api/payment',
+            data=json.dumps(payment_data),
+            content_type='application/json'
+        )
+        data = json.loads(response.data)
+
+        assert response.status_code == 400
+        assert data['success'] is False
+        assert 'future' in data['error'].lower()
     
     def test_missing_fields(self, client):
         """Test that missing required fields return error"""
@@ -97,6 +149,41 @@ class TestPaymentAPI:
         assert response.status_code == 400
         assert data['success'] is False
         assert 'error' in data
+
+    def test_invalid_json_payload(self, client):
+        """Test that non-JSON payload is rejected"""
+        response = client.post(
+            '/api/payment',
+            data='not-json',
+            content_type='application/json'
+        )
+        data = json.loads(response.data)
+
+        assert response.status_code == 400
+        assert data['success'] is False
+        assert 'invalid json' in data['error'].lower()
+
+    def test_invalid_amount_rejected(self, client):
+        """Test that non-numeric amount is rejected"""
+        payment_data = {
+            'cardNumber': '4532148803436467',
+            'cardName': 'TEST USER',
+            'expiryDate': '12/25',
+            'cvv': '123',
+            'amount': 'not-a-number',
+            'currency': 'USD'
+        }
+
+        response = client.post(
+            '/api/payment',
+            data=json.dumps(payment_data),
+            content_type='application/json'
+        )
+        data = json.loads(response.data)
+
+        assert response.status_code == 400
+        assert data['success'] is False
+        assert 'amount' in data['error'].lower()
     
     def test_get_all_transactions(self, client):
         """Test getting all transactions"""

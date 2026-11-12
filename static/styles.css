@@ -256,6 +256,18 @@ input::placeholder {
     color: var(--primary);
 }
 
+.schedule-payment {
+    margin-top: 1rem;
+}
+
+.schedule-payment label {
+    margin-bottom: 0.5rem;
+}
+
+.schedule-payment input {
+    margin-bottom: 0.75rem;
+}
+
 /* Security Info */
 .security-info {
     display: flex;
