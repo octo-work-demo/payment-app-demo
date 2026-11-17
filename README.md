@@ -126,7 +126,6 @@ Get details of a specific transaction
 ### Backend Features
 - **RESTful API**: Clean API endpoints for payment processing
 - **Validation**: Basic validation of required fields
-- **Random Failure**: 10% chance of payment failure to simulate real-world scenarios
 - **Transaction IDs**: Generates unique transaction IDs
 - **In-Memory Storage**: Stores transactions for the session
 
@@ -147,12 +146,6 @@ Edit the CSS variables in `static/styles.css`:
 Edit `app.py` and change the port number:
 ```python
 app.run(debug=True, port=5000)  # Change 5000 to your desired port
-```
-
-### Adjust Failure Rate
-Edit `app.py` and change the failure probability:
-```python
-if random.random() < 0.1:  # Change 0.1 to desired probability (0.0-1.0)
 ```
 
 ## 🛠️ Development
@@ -176,7 +169,6 @@ Some ideas for enhancement:
 
 - Payments are stored in memory and will be lost when the server restarts
 - The app simulates a 1-second processing delay for realism
-- 10% of payments randomly fail to demonstrate error handling
 - All card numbers are accepted (no real validation)
 
 ## 🤝 Contributing

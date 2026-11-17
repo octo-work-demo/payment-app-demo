@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from werkzeug.exceptions import NotFound
 import json
 import os
 from datetime import datetime
 import random
 import string
 import math
+import time
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -32,30 +34,32 @@ def serve_static(filename):
     """Serve static files"""
     try:
         return send_from_directory('static', filename)
-    except:
+    except NotFound:
         return '', 404
 
 @app.route('/api/payment', methods=['POST'])
 def process_payment():
     """Process a fake payment"""
     try:
-        data = request.json
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
         
         # Validate required fields
         required_fields = ['cardNumber', 'cardName', 'expiryDate', 'cvv', 'amount']
         for field in required_fields:
             if field not in data:
                 return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
-        
-        # Bug: Change False to True to fix the negative payment bug
-        validate_positive = False
-        
-        amount = float(data['amount'])
-        if validate_positive and amount <= 0:
+
+        try:
+            amount = float(data['amount'])
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Amount must be a valid number.'}), 400
+
+        if amount <= 0:
             return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
         
         # Simulate payment processing delay
-        import time
         time.sleep(1)
         
         # Create payment record
@@ -79,8 +83,9 @@ def process_payment():
             'timestamp': payment['timestamp']
         })
         
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception:
+        app.logger.exception('Unhandled error while processing payment')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():
