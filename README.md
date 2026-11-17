@@ -17,6 +17,7 @@ A beautiful, modern fake payment processing application for prototyping and demo
 - ✅ Form validation and error handling
 - 🔄 Loading states and animations
 - ✨ Success confirmation with transaction details
+- 📅 Schedule payment for later button
 - 🧪 Test card numbers for easy testing
 - 📱 Fully responsive design
 - 🔒 Secure-looking UI elements (fake security badges)
@@ -114,6 +115,16 @@ Get all transactions (stored in memory)
 ### GET `/api/transaction/<transaction_id>`
 Get details of a specific transaction
 
+### POST `/api/payment/schedule`
+Schedule a fake payment for a future time
+
+**Request Body (additional field):**
+```json
+{
+  "scheduled_for": "2026-11-18T10:30:00"
+}
+```
+
 ## 🎯 Features in Detail
 
 ### Frontend Features
@@ -121,12 +132,12 @@ Get details of a specific transaction
 - **Visual Feedback**: Smooth animations and hover effects throughout
 - **Error Handling**: User-friendly error messages for validation failures
 - **Success Confirmation**: Beautiful success screen with transaction details
+- **Scheduled Payments**: Set a future date/time and click "Schedule Payment for Later"
 - **Test Cards**: One-click auto-fill for quick testing
 
 ### Backend Features
 - **RESTful API**: Clean API endpoints for payment processing
-- **Validation**: Basic validation of required fields
-- **Random Failure**: 10% chance of payment failure to simulate real-world scenarios
+- **Validation**: Basic validation of required fields, including positive amount checks
 - **Transaction IDs**: Generates unique transaction IDs
 - **In-Memory Storage**: Stores transactions for the session
 
@@ -147,12 +158,6 @@ Edit the CSS variables in `static/styles.css`:
 Edit `app.py` and change the port number:
 ```python
 app.run(debug=True, port=5000)  # Change 5000 to your desired port
-```
-
-### Adjust Failure Rate
-Edit `app.py` and change the failure probability:
-```python
-if random.random() < 0.1:  # Change 0.1 to desired probability (0.0-1.0)
 ```
 
 ## 🛠️ Development
@@ -176,7 +181,6 @@ Some ideas for enhancement:
 
 - Payments are stored in memory and will be lost when the server restarts
 - The app simulates a 1-second processing delay for realism
-- 10% of payments randomly fail to demonstrate error handling
 - All card numbers are accepted (no real validation)
 
 ## 🤝 Contributing
