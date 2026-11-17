@@ -210,13 +210,6 @@ input::placeholder {
     margin-top: 0.5rem;
 }
 
-.action-row {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-}
-
 .submit-btn:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
@@ -255,10 +248,6 @@ input::placeholder {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-}
-
-.schedule-btn {
-    margin-top: 0;
 }
 
 .secondary-btn:hover {

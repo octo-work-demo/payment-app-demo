@@ -1,6 +1,5 @@
 import pytest
 import json
-from datetime import datetime, timedelta
 from app import app, payments, generate_transaction_id
 
 
@@ -213,51 +212,4 @@ class TestPaymentAPI:
         assert len(payments) == 1
         assert payments[0]['card_last_four'] == '6467'
         assert 'cardNumber' not in payments[0]  # Full card number not stored
-
-    def test_schedule_payment_success(self, client):
-        """Test scheduling a payment for a future time"""
-        scheduled_for = (datetime.now() + timedelta(hours=2)).isoformat()
-        payment_data = {
-            'cardNumber': '4532148803436467',
-            'cardName': 'TEST USER',
-            'expiryDate': '12/25',
-            'cvv': '123',
-            'amount': 35.00,
-            'currency': 'USD',
-            'scheduled_for': scheduled_for
-        }
-
-        response = client.post('/api/payment/schedule',
-                              data=json.dumps(payment_data),
-                              content_type='application/json')
-
-        data = json.loads(response.data)
-        assert response.status_code == 201
-        assert data['success'] is True
-        assert data['scheduled'] is True
-        assert data['scheduled_for'] == scheduled_for
-        assert len(payments) == 1
-        assert payments[0]['status'] == 'scheduled'
-
-    def test_schedule_payment_rejects_past_date(self, client):
-        """Test scheduling in the past is rejected"""
-        scheduled_for = (datetime.now() - timedelta(minutes=5)).isoformat()
-        payment_data = {
-            'cardNumber': '4532148803436467',
-            'cardName': 'TEST USER',
-            'expiryDate': '12/25',
-            'cvv': '123',
-            'amount': 35.00,
-            'currency': 'USD',
-            'scheduled_for': scheduled_for
-        }
-
-        response = client.post('/api/payment/schedule',
-                              data=json.dumps(payment_data),
-                              content_type='application/json')
-
-        data = json.loads(response.data)
-        assert response.status_code == 400
-        assert data['success'] is False
-        assert 'future' in data['error'].lower()
 
