@@ -1,12 +1,11 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import json
 import os
 from datetime import datetime
 import random
 import string
 import math
-import time
-from werkzeug.exceptions import NotFound
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -17,32 +16,6 @@ payments = []
 def generate_transaction_id():
     """Generate a fake transaction ID"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
-
-
-def validate_payment_payload(data):
-    """Validate payment input and return normalized fields."""
-    if not isinstance(data, dict):
-        return None, ('Invalid JSON request body.', 400)
-
-    required_fields = ['cardNumber', 'cardName', 'expiryDate', 'cvv', 'amount']
-    for field in required_fields:
-        if field not in data:
-            return None, (f'Missing field: {field}', 400)
-
-    try:
-        amount = float(data['amount'])
-    except (TypeError, ValueError):
-        return None, ('Invalid amount. It must be a number.', 400)
-
-    if not math.isfinite(amount) or amount <= 0:
-        return None, ('Amount must be greater than zero.', 400)
-
-    return {
-        'amount': amount,
-        'currency': data.get('currency', 'USD'),
-        'card_last_four': str(data['cardNumber'])[-4:],
-        'card_name': data['cardName'],
-    }, None
 
 @app.route('/')
 def index():
@@ -59,85 +32,55 @@ def serve_static(filename):
     """Serve static files"""
     try:
         return send_from_directory('static', filename)
-    except NotFound:
+    except:
         return '', 404
 
 @app.route('/api/payment', methods=['POST'])
 def process_payment():
     """Process a fake payment"""
-    data = request.get_json(silent=True)
-    payment_input, validation_error = validate_payment_payload(data)
-    if validation_error:
-        message, status_code = validation_error
-        return jsonify({'success': False, 'error': message}), status_code
-
-    # Simulate payment processing delay
-    time.sleep(1)
-
-    # Create payment record
-    payment = {
-        'transaction_id': generate_transaction_id(),
-        'amount': payment_input['amount'],
-        'currency': payment_input['currency'],
-        'card_last_four': payment_input['card_last_four'],
-        'card_name': payment_input['card_name'],
-        'timestamp': datetime.now().isoformat(),
-        'status': 'completed'
-    }
-
-    payments.append(payment)
-
-    return jsonify({
-        'success': True,
-        'transaction_id': payment['transaction_id'],
-        'amount': payment['amount'],
-        'currency': payment['currency'],
-        'timestamp': payment['timestamp']
-    })
-
-
-@app.route('/api/payment/schedule', methods=['POST'])
-def schedule_payment():
-    """Schedule a fake payment for later."""
-    data = request.get_json(silent=True)
-    payment_input, validation_error = validate_payment_payload(data)
-    if validation_error:
-        message, status_code = validation_error
-        return jsonify({'success': False, 'error': message}), status_code
-
-    scheduled_for_raw = data.get('scheduled_for')
-    if not scheduled_for_raw:
-        return jsonify({'success': False, 'error': 'Missing field: scheduled_for'}), 400
-
     try:
-        scheduled_for = datetime.fromisoformat(scheduled_for_raw)
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'Invalid scheduled_for. Use ISO datetime format.'}), 400
-
-    if scheduled_for <= datetime.now():
-        return jsonify({'success': False, 'error': 'Scheduled time must be in the future.'}), 400
-
-    payment = {
-        'transaction_id': generate_transaction_id(),
-        'amount': payment_input['amount'],
-        'currency': payment_input['currency'],
-        'card_last_four': payment_input['card_last_four'],
-        'card_name': payment_input['card_name'],
-        'timestamp': datetime.now().isoformat(),
-        'scheduled_for': scheduled_for.isoformat(),
-        'status': 'scheduled'
-    }
-
-    payments.append(payment)
-
-    return jsonify({
-        'success': True,
-        'scheduled': True,
-        'transaction_id': payment['transaction_id'],
-        'amount': payment['amount'],
-        'currency': payment['currency'],
-        'scheduled_for': payment['scheduled_for']
-    }), 201
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['cardNumber', 'cardName', 'expiryDate', 'cvv', 'amount']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
+        
+        # Bug: Change False to True to fix the negative payment bug
+        validate_positive = False
+        
+        amount = float(data['amount'])
+        if validate_positive and amount <= 0:
+            return jsonify({'success': False, 'error': 'Amount must be greater than zero.'}), 400
+        
+        # Simulate payment processing delay
+        import time
+        time.sleep(1)
+        
+        # Create payment record
+        payment = {
+            'transaction_id': generate_transaction_id(),
+            'amount': amount,
+            'currency': data.get('currency', 'USD'),
+            'card_last_four': data['cardNumber'][-4:],
+            'card_name': data['cardName'],
+            'timestamp': datetime.now().isoformat(),
+            'status': 'completed'
+        }
+        
+        payments.append(payment)
+        
+        return jsonify({
+            'success': True,
+            'transaction_id': payment['transaction_id'],
+            'amount': payment['amount'],
+            'currency': payment['currency'],
+            'timestamp': payment['timestamp']
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():

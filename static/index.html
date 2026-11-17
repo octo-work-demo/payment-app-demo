@@ -91,26 +91,19 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="scheduledFor">Schedule For (optional)</label>
-                        <input type="datetime-local" id="scheduledFor" name="scheduledFor">
-                    </div>
-
-                    <div class="action-row">
-                        <button type="submit" class="submit-btn" id="submitBtn">
-                            <span class="btn-text">Pay Now</span>
-                            <span class="btn-loader" style="display: none;">
-                                <svg class="spinner" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round">
-                                        <animate attributeName="stroke-dasharray" dur="1.5s" repeatCount="indefinite" values="0 60;60 0"/>
-                                        <animate attributeName="stroke-dashoffset" dur="1.5s" repeatCount="indefinite" values="0;-60"/>
-                                    </circle>
-                                </svg>
-                                Processing...
-                            </span>
-                        </button>
-                        <button type="button" class="secondary-btn schedule-btn" id="scheduleBtn">Schedule Payment for Later</button>
-                    </div>
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span class="btn-text">Pay Now</span>
+                        <span class="btn-loader" style="display: none;">
+                            <svg class="spinner" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round">
+                                    <animate attributeName="stroke-dasharray" dur="1.5s" repeatCount="indefinite" values="0 60;60 0"/>
+                                    <animate attributeName="stroke-dashoffset" dur="1.5s" repeatCount="indefinite" values="0;-60"/>
+                                </circle>
+                            </svg>
+                            Processing...
+                        </span>
+                    </button>
                 </form>
 
                 <!-- Security Info -->

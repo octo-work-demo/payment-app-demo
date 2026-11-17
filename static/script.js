@@ -82,8 +82,16 @@ function resetForm() {
     document.getElementById('errorBanner').style.display = 'none';
 }
 
-function buildFormData() {
-    return {
+// Handle form submission
+document.getElementById('payment-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoader = submitBtn.querySelector('.btn-loader');
+    
+    // Get form data
+    const formData = {
         cardNumber: document.getElementById('cardNumber').value.replace(/\s/g, ''),
         cardName: document.getElementById('cardName').value,
         expiryDate: document.getElementById('expiryDate').value,
@@ -91,62 +99,52 @@ function buildFormData() {
         amount: parseFloat(document.getElementById('amount').value),
         currency: 'USD'
     };
-}
 
-function validateFormData(formData) {
     if (!Number.isFinite(formData.amount) || formData.amount <= 0) {
-        return 'Please enter a valid amount greater than zero';
+        showError('Please enter a valid amount greater than zero');
+        return;
     }
-
+    
     if (formData.cardNumber.length < 13) {
-        return 'Please enter a valid card number';
+        showError('Please enter a valid card number');
+        return;
     }
-
+    
     if (!formData.expiryDate.match(/^\d{2}\/\d{2}$/)) {
-        return 'Please enter a valid expiry date (MM/YY)';
+        showError('Please enter a valid expiry date (MM/YY)');
+        return;
     }
-
+    
     if (formData.cvv.length < 3) {
-        return 'Please enter a valid CVV';
+        showError('Please enter a valid CVV');
+        return;
     }
-
-    return null;
-}
-
-function showSuccess(data, actionLabel = 'processed') {
-    document.getElementById('transactionId').textContent = data.transaction_id;
-    document.getElementById('transactionAmount').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
-    const timeValue = data.scheduled_for || data.timestamp;
-    document.getElementById('transactionTime').textContent = new Date(timeValue).toLocaleString();
-    document.querySelector('.success-message').textContent = `Your transaction has been ${actionLabel} successfully`;
-
-    document.getElementById('paymentForm').style.display = 'none';
-    document.getElementById('successMessage').style.display = 'block';
-}
-
-async function sendPayment(endpoint, payload) {
-    const submitBtn = document.getElementById('submitBtn');
-    const btnText = submitBtn.querySelector('.btn-text');
-    const btnLoader = submitBtn.querySelector('.btn-loader');
-
+    
     // Show loading
     submitBtn.disabled = true;
     btnText.style.display = 'none';
     btnLoader.style.display = 'flex';
     
     try {
-        const response = await fetch(endpoint, {
+        // Send payment request
+        const response = await fetch('http://localhost:5000/api/payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(formData)
         });
         
         const data = await response.json();
         
         if (data.success) {
-            showSuccess(data, data.scheduled ? 'scheduled' : 'processed');
+            // Show success message
+            document.getElementById('transactionId').textContent = data.transaction_id;
+            document.getElementById('transactionAmount').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
+            document.getElementById('transactionTime').textContent = new Date(data.timestamp).toLocaleString();
+            
+            document.getElementById('paymentForm').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'block';
         } else {
             showError(data.error || 'Payment failed. Please try again.');
         }
@@ -159,43 +157,6 @@ async function sendPayment(endpoint, payload) {
         btnText.style.display = 'inline';
         btnLoader.style.display = 'none';
     }
-}
-
-// Handle form submission
-document.getElementById('payment-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = buildFormData();
-    const validationError = validateFormData(formData);
-    if (validationError) {
-        showError(validationError);
-        return;
-    }
-
-    await sendPayment('/api/payment', formData);
-});
-
-document.getElementById('scheduleBtn').addEventListener('click', async function() {
-    const formData = buildFormData();
-    const validationError = validateFormData(formData);
-    if (validationError) {
-        showError(validationError);
-        return;
-    }
-
-    const scheduledForInput = document.getElementById('scheduledFor').value;
-    if (!scheduledForInput) {
-        showError('Please choose a date and time to schedule this payment');
-        return;
-    }
-
-    const scheduledForDate = new Date(scheduledForInput);
-    if (Number.isNaN(scheduledForDate.getTime()) || scheduledForDate <= new Date()) {
-        showError('Please choose a future date and time');
-        return;
-    }
-
-    formData.scheduled_for = scheduledForDate.toISOString();
-    await sendPayment('/api/payment/schedule', formData);
 });
 
 // Add some visual feedback on input focus
